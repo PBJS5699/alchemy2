@@ -1,0 +1,219 @@
+/* Parameter container styles */
+.parameter {
+    margin-bottom: 2px;
+    position: relative;
+    pointer-events: all;
+  }
+  
+  .parameter-container {
+    width: 220px;
+    border-radius: 11px;
+    border: 0.6px solid #444;
+    background: #1F1F1F;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+    cursor: default;
+    min-height: 22px;
+    margin-left: -8px;
+    margin-right: -8px;
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Add dropdown container specific styles */
+  .parameter-container.dropdown {
+    cursor: pointer;
+    position: relative;
+    padding-right: 24px; /* Make room for the caret */
+  }
+  
+  /* Add dropdown caret */
+  .parameter-container.dropdown::after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid #8C8C8C;
+    pointer-events: none;
+    border-radius: 2px;
+  }
+  
+  /* Consistent text styles for all parameter types */
+  .parameter-label,
+  .parameter-value,
+  .parameter-input,
+  .dropdown-option {
+    font-family: Inter;
+    font-size: 10px;
+    font-weight: 300;
+    color: #8C8C8C;
+  }
+  
+  .parameter-value,
+  .parameter-input,
+  .dropdown-option {
+    color: #BBBBBB;
+  }
+  
+  /* Number input and slider styles */
+  .parameter-input {
+    width: 50px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 4px;
+    color: #BBBBBB;
+    font-size: 10px;
+    text-align: right;
+    font-family: Inter;
+    z-index: 1;
+    position: relative;
+  }
+  
+  .parameter-input:focus {
+    outline: none;
+    background: #2A2A2A;
+  }
+  
+  .parameter-input::-webkit-outer-spin-button,
+  .parameter-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  .parameter-input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  
+  /* Slider styles */
+  .parameter-slider {
+    width: 100%;
+    margin-top: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #8C8C8C;
+    height: 1px;
+    border-radius: 2px;
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Fix slider thumb to properly capture and prevent drag events */
+  .parameter-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 8px;
+    height: 8px;
+    background: #CDCDCD;
+    border-radius: 50%;
+    cursor: grab;
+    position: relative;
+    z-index: 3;
+    pointer-events: auto !important;
+  }
+  
+  .parameter-slider::-moz-range-thumb {
+    width: 8px;
+    height: 8px;
+    background: #CDCDCD;
+    border-radius: 50%;
+    cursor: grab;
+    position: relative;
+    z-index: 3;
+    border: none;
+    pointer-events: auto !important;
+  }
+  
+  .parameter-slider:active::-webkit-slider-thumb {
+    cursor: grabbing;
+  }
+  
+  .parameter-slider:active::-moz-range-thumb {
+    cursor: grabbing;
+  }
+  
+  /* Prevent parent node drag when interacting with slider */
+  .slider-row {
+    width: 100%;
+    position: relative;
+    z-index: 1;
+    pointer-events: auto !important;
+    /* Prevent parent node drag by stopping propagation */
+    touch-action: none;
+  }
+  
+  .slider-row .parameter-slider {
+    width: 100%;
+    margin: 0;
+  }
+  
+  /* Dropdown styles */
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: #1F1F1F;
+    border: 0.6px solid #444;
+    border-radius: 5px;
+    margin-top: 4px;
+    z-index: 1000;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+  
+  .dropdown-option {
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .dropdown-option:hover {
+    background: #2A2A2A;
+  }
+  
+  .dropdown-option.selected {
+    background: #333333;
+  }
+  
+  /* Scrollbar styles for dropdown */
+  .dropdown-menu::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .dropdown-menu::-webkit-scrollbar-track {
+    background: #1F1F1F;
+    border-radius: 3px;
+  }
+  
+  .dropdown-menu::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 3px;
+  }
+  
+  .dropdown-menu::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
+  /* Single slider styles */
+  .slider-container {
+    flex-direction: column;
+    padding: 6px 10px;
+    gap: 2px;
+    z-index: 1;
+  }
+  
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: -8px;
+  }

@@ -19,6 +19,8 @@ interface FlowState {
   onConnect: (connection: Connection) => void;
   addNode: (nodeType: string, position: { x: number, y: number }) => void;
   updateNodeParameters: (nodeId: string, parameters: Record<string, any>) => void;
+  setNodes: (nodes: Node<NodeData>[]) => void;
+  setEdges: (edges: Edge[]) => void;
 }
 
 export const useFlowStore = create<FlowState>((set, get) => ({
@@ -79,5 +81,13 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         return node;
       })
     });
+  },
+  
+  setNodes: (nodes) => {
+    set({ nodes });
+  },
+  
+  setEdges: (edges) => {
+    set({ edges });
   },
 }));

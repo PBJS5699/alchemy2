@@ -6,6 +6,9 @@ export function tokenize(code: string): Token[] {
   let column = 1;
   let index = 0;
   
+  // Define DSL keywords
+  const keywords = new Set(['node', 'workflow', 'inputs', 'outputs', 'parameters', 'connections']);
+  
   // Helper to add a token
   const addToken = (type: TokenType, value: string) => {
     tokens.push({ type, value, line, column });
@@ -44,7 +47,7 @@ export function tokenize(code: string): Token[] {
       continue;
     }
     
-    // Handle identifiers
+    // Handle identifiers and keywords
     if (/[a-zA-Z_]/.test(char)) {
       const start = index;
       
@@ -54,7 +57,13 @@ export function tokenize(code: string): Token[] {
       }
       
       const value = code.substring(start, index);
-      addToken(TokenType.IDENTIFIER, value);
+      
+      // Check if it's a keyword
+      if (keywords.has(value)) {
+        addToken(TokenType.KEYWORD, value);
+      } else {
+        addToken(TokenType.IDENTIFIER, value);
+      }
       continue;
     }
     

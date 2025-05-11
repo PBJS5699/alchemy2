@@ -34,18 +34,26 @@ export const useCodeStore = create<CodeState>((set, get) => ({
   
   syncCodeToFlow: () => {
     try {
+      console.log("Starting sync to flow");
       const code = get().code;
-      // This will be implemented in later steps
-      const { nodes, edges } = parseCode(code);
+      console.log("Code to parse:", code);
+      
+      const result = parseCode(code);
+      console.log("Parse result:", result);
+      
+      const { nodes, edges } = result;
+      console.log("Nodes:", nodes);
+      console.log("Edges:", edges);
       
       // Update the flow store with the new nodes and edges
       const flowStore = useFlowStore.getState();
-      // This is simplified for now, we'll implement it properly later
-      // flowStore.setNodes(nodes);
-      // flowStore.setEdges(edges);
+      flowStore.setNodes(nodes);
+      flowStore.setEdges(edges);
       
+      console.log("Sync complete");
       set({ isValidCode: true, errorMessage: null });
     } catch (error) {
+      console.error("Error in syncCodeToFlow:", error);
       set({ 
         isValidCode: false, 
         errorMessage: error instanceof Error ? error.message : 'Unknown error' 

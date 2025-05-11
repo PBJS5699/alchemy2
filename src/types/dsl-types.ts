@@ -14,7 +14,8 @@ export enum TokenType {
     COMMENT = 'COMMENT',
     WHITESPACE = 'WHITESPACE',
     EOL = 'EOL',
-    EOF = 'EOF'
+    EOF = 'EOF',
+    KEYWORD = 'KEYWORD'
   }
   
   // Token structure
@@ -31,7 +32,8 @@ export enum TokenType {
     VARIABLE_DECLARATION = 'VARIABLE_DECLARATION',
     FUNCTION_CALL = 'FUNCTION_CALL',
     IDENTIFIER = 'IDENTIFIER',
-    LITERAL = 'LITERAL'
+    LITERAL = 'LITERAL',
+    NODE_DEFINITION = 'NODE_DEFINITION'
   }
   
   // AST structure
@@ -50,4 +52,11 @@ export enum TokenType {
     name: string;
     arguments: ASTNode[];
     parameters: Record<string, any>;
+  }
+  
+  // Add new AST node structure for node definition
+  export interface NodeDefinitionNode extends ASTNode {
+    type: ASTNodeType.NODE_DEFINITION;
+    name: string;
+    // We'll keep it simple for now
   }

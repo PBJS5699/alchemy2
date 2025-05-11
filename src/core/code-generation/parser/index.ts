@@ -4,6 +4,7 @@ import { ASTNode, ASTNodeType } from '../../../types/dsl-types';
 import { NodeDefinition, PortType, ParameterType } from '../../../types/node-types';
 import { nodeRegistry } from '../../node-system/node-registry';
 import { Position } from 'reactflow';
+import { emptyNodeDefinition } from '../../../components/nodes/empty/node-definition';
 
 // Main parse function that converts code to nodes/edges
 export function parseCode(code: string) {
@@ -32,7 +33,26 @@ function processAST(ast: ASTNode) {
   // Process each statement in the program
   if (ast.type === ASTNodeType.PROGRAM && ast.children) {
     ast.children.forEach(statement => {
-      if (statement.type === ASTNodeType.VARIABLE_DECLARATION) {
+      // Handle node definition
+      if (statement.type === ASTNodeType.NODE_DEFINITION) {
+        const nodeId = `node_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        
+        // For MVP, we'll create an empty node
+        nodes.push({
+          id: nodeId,
+          type: 'empty-node', // Using our empty node type
+          position: { x: xPos, y: yPos },
+          data: {
+            label: statement.name, // Use the node name from the DSL
+            parameters: {},
+            nodeDef: emptyNodeDefinition
+          }
+        });
+        
+        // Update position for next node
+        yPos += 150;
+      } 
+      else if (statement.type === ASTNodeType.VARIABLE_DECLARATION) {
         // Process variable declaration
         const varName = statement.name as string;
         const functionCall = statement.value;

@@ -17,9 +17,12 @@ const NodeWorkspace: React.FC = () => {
   nodeRegistry.getAllDefinitions().forEach(def => {
     const component = nodeRegistry.getComponent(def.type);
     if (component) {
+      console.log(`Registering node type: ${def.type}`);
       nodeTypes[def.type] = component;
     }
   });
+  
+  console.log("Current nodes:", nodes);
   
   return (
     <div className="w-full h-full">

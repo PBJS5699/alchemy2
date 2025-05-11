@@ -7,7 +7,7 @@ interface CodeEditorProps {
 }
 
 const CodeEditor: React.FC<CodeEditorProps> = ({ height = '100%' }) => {
-  const { code, updateCode, isValidCode, errorMessage } = useCodeStore();
+  const { code, updateCode, isValidCode, errorMessage, syncCodeToFlow } = useCodeStore();
   const editorRef = useRef<any>(null);
   
   const handleEditorDidMount: OnMount = (editor, monaco) => {
@@ -47,6 +47,15 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ height = '100%' }) => {
   
   return (
     <div className="relative w-full h-full">
+      <div className="absolute top-0 right-0 z-10 m-2">
+        <button 
+          className="px-2 py-1 bg-blue-500 text-white rounded"
+          onClick={syncCodeToFlow}
+        >
+          Sync to Nodes
+        </button>
+      </div>
+      
       <Editor
         height={height}
         defaultLanguage="javascript"

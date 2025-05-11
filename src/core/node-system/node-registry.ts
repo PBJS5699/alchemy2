@@ -1,6 +1,8 @@
 import { NodeDefinition, NodeRegistryEntry } from '../../types/node-types';
 import { testNodeDefinition } from '../../components/nodes/test/node-definition';
 import TestNode from '../../components/nodes/test/TestNode';
+import { emptyNodeDefinition } from '../../components/nodes/empty/node-definition';
+import EmptyNode from '../../components/nodes/empty/EmptyNode';
 
 class NodeRegistry {
   private registry: Map<string, NodeRegistryEntry> = new Map();
@@ -8,6 +10,9 @@ class NodeRegistry {
   constructor() {
     // Register test node
     this.register(testNodeDefinition, TestNode);
+    
+    // Register empty node
+    this.register(emptyNodeDefinition, EmptyNode);
   }
   
   register(definition: NodeDefinition, component: React.ComponentType<any>) {

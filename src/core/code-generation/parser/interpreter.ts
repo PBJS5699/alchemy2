@@ -1,4 +1,4 @@
-import { Token, TokenType, ASTNode, ASTNodeType, FunctionCall } from '../../../types/dsl-types';
+import { Token, TokenType, ASTNode, ASTNodeType, FunctionCall, NodeDefinitionNode } from '../../../types/dsl-types';
 import { tokenize } from './tokenizer';
 
 export function parse(tokens: Token[]): ASTNode {
@@ -54,11 +54,41 @@ export function parse(tokens: Token[]): ASTNode {
     }
   }
   
+  // Add a function to parse node definitions
+  function parseNodeDefinition(): ASTNode {
+    // Consume 'node' keyword
+    advance(); // Skip 'node' token
+    
+    // Get node name
+    const nodeName = consume(TokenType.IDENTIFIER, "Expected node name").value;
+    
+    // Check for opening brace
+    consume(TokenType.LEFT_BRACE, "Expected '{' after node name");
+    
+    // For MVP, we'll skip all contents until closing brace
+    let braceCount = 1;
+    while (braceCount > 0 && !check(TokenType.EOF)) {
+      if (check(TokenType.LEFT_BRACE)) braceCount++;
+      if (check(TokenType.RIGHT_BRACE)) braceCount--;
+      advance();
+    }
+    
+    return {
+      type: ASTNodeType.NODE_DEFINITION,
+      name: nodeName
+    };
+  }
+  
   // Parse a statement
   function statement(): ASTNode {
     // Skip comments
     while (check(TokenType.COMMENT)) {
       advance();
+    }
+    
+    // Check for node definition
+    if (check(TokenType.KEYWORD) && peek().value === 'node') {
+      return parseNodeDefinition();
     }
     
     // Variable declaration

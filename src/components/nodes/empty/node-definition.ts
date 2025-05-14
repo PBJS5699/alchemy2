@@ -2,9 +2,8 @@ import { NodeDefinition, ParameterType, PortType } from '../../../types/node-typ
 
 export const emptyNodeDefinition: NodeDefinition = {
   type: 'empty-node',
-  label: 'Empty Node',
   category: 'basic',
-  description: 'An empty node with no inputs, outputs, or parameters',
+  description: 'An empty node for testing',
   inputs: [],
   outputs: [],
   parameters: []

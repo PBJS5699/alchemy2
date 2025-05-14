@@ -12,18 +12,31 @@ interface SliderParameterProps {
 const SliderParameter: React.FC<SliderParameterProps> = ({ nodeId, param, value }) => {
   const updateNodeParameters = useFlowStore(state => state.updateNodeParameters);
   
+  // Use consistent parameter name property (matching the NodeDefinition interface)
+  const paramName = param.name || param.id;
+  const displayName = param.displayName || param.label || paramName;
+  
+  // Get min, max, step values with proper fallbacks
+  const min = param.min !== undefined ? param.min : 0;
+  const max = param.max !== undefined ? param.max : 100;
+  const step = param.step !== undefined ? param.step : 1;
+  
+  // Ensure value is within bounds and handle undefined
+  const currentValue = value !== undefined
+    ? Math.min(Math.max(value, min), max)
+    : param.defaultValue !== undefined 
+      ? param.defaultValue 
+      : (min + max) / 2; // Default to middle of range
+  
   const handleChange = (val: any) => {
     // If val is an event object, extract value from target
     const newValue = val && val.target 
-      ? val.target.value === '' ? (param.min || 0) : parseFloat(val.target.value)
-      : val === '' ? (param.min || 0) : parseFloat(val);
+      ? val.target.value === '' ? min : parseFloat(val.target.value)
+      : val === '' ? min : parseFloat(val);
     
     if (!isNaN(newValue)) {
-      const min = param.min !== undefined ? param.min : 0;
-      const max = param.max !== undefined ? param.max : 100;
-      
       updateNodeParameters(nodeId, { 
-        [param.id]: Math.min(Math.max(newValue, min), max)
+        [paramName]: Math.min(Math.max(newValue, min), max)
       });
     }
   };
@@ -48,27 +61,27 @@ const SliderParameter: React.FC<SliderParameterProps> = ({ nodeId, param, value 
     <div className="parameter">
       <div className="parameter-container slider-container">
         <div className="slider-header">
-          <span className="parameter-label">{param.label}</span>
+          <span className="parameter-label">{displayName}</span>
           <input
             type="number"
             className="parameter-input"
-            value={value}
+            value={currentValue}
             onChange={handleChange}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            min={param.min}
-            max={param.max}
-            step={param.step || 1}
+            min={min}
+            max={max}
+            step={step}
           />
         </div>
         <div className="slider-row">
           <input
             type="range"
             className="parameter-slider"
-            value={value}
+            value={currentValue}
             onChange={(e) => {
               const newValue = parseFloat(e.target.value);
-              updateNodeParameters(nodeId, { [param.id]: newValue });
+              updateNodeParameters(nodeId, { [paramName]: newValue });
             }}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => {
@@ -78,9 +91,9 @@ const SliderParameter: React.FC<SliderParameterProps> = ({ nodeId, param, value 
             onMouseUp={restorePointerEvents}
             onMouseLeave={restorePointerEvents}
             onDragStart={(e) => e.stopPropagation()}
-            min={param.min !== undefined ? param.min : 0}
-            max={param.max !== undefined ? param.max : 100}
-            step={param.step || 1}
+            min={min}
+            max={max}
+            step={step}
           />
         </div>
       </div>

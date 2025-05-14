@@ -12,14 +12,18 @@ interface TextParameterProps {
 const TextParameter: React.FC<TextParameterProps> = ({ nodeId, param, value }) => {
   const updateNodeParameters = useFlowStore(state => state.updateNodeParameters);
   
+  // Use consistent parameter name property (matching the NodeDefinition interface)
+  const paramName = param.name || param.id;
+  const displayName = param.displayName || param.label || paramName;
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateNodeParameters(nodeId, { [param.id]: e.target.value });
+    updateNodeParameters(nodeId, { [paramName]: e.target.value });
   };
   
   return (
     <div className="parameter">
       <div className="parameter-container">
-        <span className="parameter-label">{param.label}</span>
+        <span className="parameter-label">{displayName}</span>
         <input
           type="text"
           className="parameter-input"

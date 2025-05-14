@@ -1,4 +1,16 @@
-import { Token, TokenType, ASTNode, ASTNodeType, FunctionCall, NodeDefinitionNode } from '../../../types/dsl-types';
+import { 
+  Token, 
+  TokenType, 
+  ASTNode, 
+  ASTNodeType, 
+  FunctionCall, 
+  NodeDefinitionNode,
+  ParameterDefinitionNode,
+  WorkspaceBlockNode,
+  ConnectionsBlockNode,
+  ConnectionNode,
+  PortReferenceNode
+} from '../../../types/dsl-types';
 import { tokenize } from './tokenizer';
 
 export function parse(tokens: Token[]): ASTNode {
@@ -20,6 +32,172 @@ export function parse(tokens: Token[]): ASTNode {
     }
     throw new Error(errorMessage);
   };
+
+  // Parse a port reference (node.port)
+  function parsePortReference(): PortReferenceNode {
+    const nodeName = consume(TokenType.IDENTIFIER, "Expected node name").value;
+    consume(TokenType.DOT, "Expected '.' after node name");
+    const portName = consume(TokenType.IDENTIFIER, "Expected port name").value;
+    
+    return {
+      type: ASTNodeType.PORT_REFERENCE,
+      nodeName,
+      portName
+    };
+  }
+
+  // Parse a connection (nodeA.port -> nodeB.port)
+  function parseConnection(): ConnectionNode {
+    const from = parsePortReference();
+    consume(TokenType.ARROW, "Expected '->' between ports");
+    const to = parsePortReference();
+    
+    return {
+      type: ASTNodeType.CONNECTION,
+      from,
+      to
+    };
+  }
+
+  // Parse connections block
+  function parseConnectionsBlock(): ConnectionsBlockNode {
+    // Consume 'connections' keyword
+    advance();
+    consume(TokenType.LEFT_BRACE, "Expected '{' after 'connections'");
+    
+    const connections: ConnectionNode[] = [];
+    
+    // Parse connections until we hit closing brace
+    while (!check(TokenType.RIGHT_BRACE) && !check(TokenType.EOF)) {
+      connections.push(parseConnection());
+      
+      // Optional semicolon or comma between connections
+      if (check(TokenType.SEMICOLON) || check(TokenType.COMMA)) {
+        advance();
+      }
+    }
+    
+    consume(TokenType.RIGHT_BRACE, "Expected '}' after connections block");
+    
+    return {
+      type: ASTNodeType.CONNECTIONS_BLOCK,
+      connections
+    };
+  }
+
+  // Parse parameter definition
+  function parseParameterDefinition(): ParameterDefinitionNode {
+    const name = consume(TokenType.IDENTIFIER, "Expected parameter name").value;
+    consume(TokenType.COLON, "Expected ':' after parameter name");
+    const paramType = consume(TokenType.IDENTIFIER, "Expected parameter type").value;
+    
+    let constraints: any[] = [];
+    
+    // Parse optional constraints
+    if (check(TokenType.LEFT_PAREN)) {
+      advance();
+      while (!check(TokenType.RIGHT_PAREN) && !check(TokenType.EOF)) {
+        constraints.push(literal());
+        if (check(TokenType.COMMA)) advance();
+      }
+      consume(TokenType.RIGHT_PAREN, "Expected ')' after constraints");
+    }
+    
+    return {
+      type: ASTNodeType.LITERAL,
+      name,
+      paramType,
+      constraints
+    };
+  }
+
+  // Parse node definition
+  function parseNodeDefinition(): NodeDefinitionNode {
+    // Consume 'node' keyword
+    advance();
+    
+    // Get node name
+    const name = consume(TokenType.IDENTIFIER, "Expected node name").value;
+    
+    // Parse node body
+    consume(TokenType.LEFT_BRACE, "Expected '{' after node name");
+    
+    const inputs: Record<string, string> = {};
+    const outputs: Record<string, string> = {};
+    const parameters: Record<string, ParameterDefinitionNode> = {};
+    
+    while (!check(TokenType.RIGHT_BRACE) && !check(TokenType.EOF)) {
+      if (check(TokenType.INPUTS_KEYWORD)) {
+        advance();
+        consume(TokenType.LEFT_BRACE, "Expected '{' after 'inputs'");
+        while (!check(TokenType.RIGHT_BRACE) && !check(TokenType.EOF)) {
+          const name = consume(TokenType.IDENTIFIER, "Expected input name").value;
+          consume(TokenType.COLON, "Expected ':' after input name");
+          const type = consume(TokenType.IDENTIFIER, "Expected input type").value;
+          inputs[name] = type;
+          if (check(TokenType.COMMA)) advance();
+        }
+        consume(TokenType.RIGHT_BRACE, "Expected '}' after inputs");
+      } else if (check(TokenType.OUTPUTS_KEYWORD)) {
+        advance();
+        consume(TokenType.LEFT_BRACE, "Expected '{' after 'outputs'");
+        while (!check(TokenType.RIGHT_BRACE) && !check(TokenType.EOF)) {
+          const name = consume(TokenType.IDENTIFIER, "Expected output name").value;
+          consume(TokenType.COLON, "Expected ':' after output name");
+          const type = consume(TokenType.IDENTIFIER, "Expected output type").value;
+          outputs[name] = type;
+          if (check(TokenType.COMMA)) advance();
+        }
+        consume(TokenType.RIGHT_BRACE, "Expected '}' after outputs");
+      } else if (check(TokenType.PARAMETERS_KEYWORD)) {
+        advance();
+        consume(TokenType.LEFT_BRACE, "Expected '{' after 'parameters'");
+        while (!check(TokenType.RIGHT_BRACE) && !check(TokenType.EOF)) {
+          const param = parseParameterDefinition();
+          parameters[param.name] = param;
+          if (check(TokenType.COMMA)) advance();
+        }
+        consume(TokenType.RIGHT_BRACE, "Expected '}' after parameters");
+      } else {
+        advance(); // Skip unknown tokens
+      }
+    }
+    
+    consume(TokenType.RIGHT_BRACE, "Expected '}' after node definition");
+    
+    return {
+      type: ASTNodeType.NODE_DEFINITION,
+      name,
+      inputs,
+      outputs,
+      parameters
+    };
+  }
+
+  // Parse workspace block
+  function parseWorkspaceBlock(): WorkspaceBlockNode {
+    // Consume 'workspace' keyword
+    advance();
+    consume(TokenType.LEFT_BRACE, "Expected '{' after 'workspace'");
+    
+    const nodes: NodeDefinitionNode[] = [];
+    
+    // Parse nodes until we hit closing brace
+    while (!check(TokenType.RIGHT_BRACE) && !check(TokenType.EOF)) {
+      if (check(TokenType.NODE_KEYWORD)) {
+        nodes.push(parseNodeDefinition() as NodeDefinitionNode);
+      } else {
+        advance(); // Skip unknown tokens
+      }
+    }
+    
+    consume(TokenType.RIGHT_BRACE, "Expected '}' after workspace block");
+    
+    return {
+      type: ASTNodeType.WORKSPACE_BLOCK,
+      nodes
+    };
+  }
   
   // Parse a program
   function program(): ASTNode {
@@ -54,31 +232,6 @@ export function parse(tokens: Token[]): ASTNode {
     }
   }
   
-  // Add a function to parse node definitions
-  function parseNodeDefinition(): ASTNode {
-    // Consume 'node' keyword
-    advance(); // Skip 'node' token
-    
-    // Get node name
-    const nodeName = consume(TokenType.IDENTIFIER, "Expected node name").value;
-    
-    // Check for opening brace
-    consume(TokenType.LEFT_BRACE, "Expected '{' after node name");
-    
-    // For MVP, we'll skip all contents until closing brace
-    let braceCount = 1;
-    while (braceCount > 0 && !check(TokenType.EOF)) {
-      if (check(TokenType.LEFT_BRACE)) braceCount++;
-      if (check(TokenType.RIGHT_BRACE)) braceCount--;
-      advance();
-    }
-    
-    return {
-      type: ASTNodeType.NODE_DEFINITION,
-      name: nodeName
-    };
-  }
-  
   // Parse a statement
   function statement(): ASTNode {
     // Skip comments
@@ -86,9 +239,17 @@ export function parse(tokens: Token[]): ASTNode {
       advance();
     }
     
-    // Check for node definition
-    if (check(TokenType.KEYWORD) && peek().value === 'node') {
+    // Check for specific block types
+    if (check(TokenType.NODE_KEYWORD)) {
       return parseNodeDefinition();
+    }
+    
+    if (check(TokenType.WORKSPACE_KEYWORD)) {
+      return parseWorkspaceBlock();
+    }
+    
+    if (check(TokenType.CONNECTIONS_KEYWORD)) {
+      return parseConnectionsBlock();
     }
     
     // Variable declaration

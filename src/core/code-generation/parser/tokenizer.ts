@@ -7,7 +7,10 @@ export function tokenize(code: string): Token[] {
   let index = 0;
   
   // Define DSL keywords
-  const keywords = new Set(['node', 'workflow', 'inputs', 'outputs', 'parameters', 'connections']);
+  const keywords = new Set([
+    'node', 'workspace', 'connections', 
+    'inputs', 'outputs', 'parameters'
+  ]);
   
   // Helper to add a token
   const addToken = (type: TokenType, value: string) => {
@@ -47,6 +50,14 @@ export function tokenize(code: string): Token[] {
       continue;
     }
     
+    // Handle arrow token
+    if (char === '-' && code[index + 1] === '>') {
+      addToken(TokenType.ARROW, '->');
+      index += 2;
+      column += 2;
+      continue;
+    }
+    
     // Handle identifiers and keywords
     if (/[a-zA-Z_]/.test(char)) {
       const start = index;
@@ -58,9 +69,30 @@ export function tokenize(code: string): Token[] {
       
       const value = code.substring(start, index);
       
-      // Check if it's a keyword
+      // Check if it's a keyword and map to specific keyword type
       if (keywords.has(value)) {
-        addToken(TokenType.KEYWORD, value);
+        switch (value) {
+          case 'node':
+            addToken(TokenType.NODE_KEYWORD, value);
+            break;
+          case 'workspace':
+            addToken(TokenType.WORKSPACE_KEYWORD, value);
+            break;
+          case 'connections':
+            addToken(TokenType.CONNECTIONS_KEYWORD, value);
+            break;
+          case 'inputs':
+            addToken(TokenType.INPUTS_KEYWORD, value);
+            break;
+          case 'outputs':
+            addToken(TokenType.OUTPUTS_KEYWORD, value);
+            break;
+          case 'parameters':
+            addToken(TokenType.PARAMETERS_KEYWORD, value);
+            break;
+          default:
+            addToken(TokenType.KEYWORD, value);
+        }
       } else {
         addToken(TokenType.IDENTIFIER, value);
       }
@@ -134,6 +166,9 @@ export function tokenize(code: string): Token[] {
         break;
       case ';':
         addToken(TokenType.SEMICOLON, char);
+        break;
+      case '.':
+        addToken(TokenType.DOT, char);
         break;
       default:
         // Skip unknown characters

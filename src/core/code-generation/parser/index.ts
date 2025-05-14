@@ -1,151 +1,147 @@
 import { tokenize } from './tokenizer';
 import { parse } from './interpreter';
-import { ASTNode, ASTNodeType } from '../../../types/dsl-types';
-import { NodeDefinition, PortType, ParameterType } from '../../../types/node-types';
+import { ASTNode, ASTNodeType, NodeDefinitionNode } from '../../../types/dsl-types';
 import { nodeRegistry } from '../../node-system/node-registry';
-import { Position } from 'reactflow';
-import { emptyNodeDefinition } from '../../../components/nodes/empty/node-definition';
+import { generateNodeDefinition, validateNodeDefinition } from '../../node-system/dynamic-node-generator';
+import { processWorkspace } from './workspace-parser';
 
-// Main parse function that converts code to nodes/edges
-export function parseCode(code: string) {
-  try {
-    const tokens = tokenize(code);
-    const ast = parse(tokens);
-    
-    // Process AST to generate nodes and edges
-    return processAST(ast);
-  } catch (error) {
-    console.error('Error parsing code:', error);
-    throw error;
+/**
+ * Recursively find all nodes of a specific type in the AST
+ */
+function findNodesOfType(ast: ASTNode, type: ASTNodeType): ASTNode[] {
+  const nodes: ASTNode[] = [];
+
+  function traverse(node: ASTNode) {
+    if (node.type === type) {
+      nodes.push(node);
+    }
+
+    if (node.children) {
+      node.children.forEach(traverse);
+    }
   }
+
+  traverse(ast);
+  return nodes;
 }
 
-// Process AST into nodes and edges
-function processAST(ast: ASTNode) {
-  const nodes: any[] = [];
-  const edges: any[] = [];
-  const variables: Record<string, string> = {}; // Maps variable names to node IDs
-  
-  // Position tracking for visual layout
-  let xPos = 50;
-  let yPos = 50;
-  
-  // Process each statement in the program
-  if (ast.type === ASTNodeType.PROGRAM && ast.children) {
-    ast.children.forEach(statement => {
-      // Handle node definition
-      if (statement.type === ASTNodeType.NODE_DEFINITION) {
-        const nodeId = `node_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-        
-        // For MVP, we'll create an empty node
-        nodes.push({
-          id: nodeId,
-          type: 'empty-node', // Using our empty node type
-          position: { x: xPos, y: yPos },
-          data: {
-            label: statement.name, // Use the node name from the DSL
-            parameters: {},
-            nodeDef: emptyNodeDefinition
-          }
-        });
-        
-        // Update position for next node
-        yPos += 150;
-      } 
-      else if (statement.type === ASTNodeType.VARIABLE_DECLARATION) {
-        // Process variable declaration
-        const varName = statement.name as string;
-        const functionCall = statement.value;
-        
-        if (functionCall && functionCall.type === ASTNodeType.FUNCTION_CALL) {
-          // Create node from function call
-          const nodeId = `node_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-          const nodeName = functionCall.name as string;
-          
-          // Get node definition from registry
-          const nodeDef = nodeRegistry.getDefinition(nodeName);
-          
-          if (nodeDef) {
-            // Create node
-            nodes.push({
-              id: nodeId,
-              type: nodeName,
-              position: { x: xPos, y: yPos },
-              data: {
-                label: nodeDef.label,
-                parameters: processParameters(functionCall.parameters || {}, nodeDef),
-                nodeDef
-              }
-            });
-            
-            // Update position for next node
-            yPos += 150;
-            
-            // Store variable name -> node ID mapping
-            variables[varName] = nodeId;
-            
-            // Process connections from args
-            if (functionCall.arguments && nodeDef.inputs.length > 0) {
-              functionCall.arguments.forEach((arg: ASTNode, index: number) => {
-                if (arg.type === ASTNodeType.IDENTIFIER) {
-                  const sourceNodeId = variables[arg.value];
-                  
-                  if (sourceNodeId) {
-                    // Get source node definition to use its output handle
-                    const sourceNodeType = nodes.find(n => n.id === sourceNodeId)?.type;
-                    const sourceNodeDef = sourceNodeType ? nodeRegistry.getDefinition(sourceNodeType) : undefined;
-                    const sourceOutputId = sourceNodeDef?.outputs[0]?.id || 'output';
-                    
-                    // Create edge
-                    edges.push({
-                      id: `edge_${sourceNodeId}_${nodeId}`,
-                      source: sourceNodeId,
-                      target: nodeId,
-                      sourceHandle: sourceOutputId,
-                      targetHandle: nodeDef.inputs[index]?.id || `input_${index}`
-                    });
-                  }
-                }
-              });
-            }
-          }
-        }
-      }
-    });
-  }
-  
-  return { nodes, edges };
+/**
+ * Find all node definitions in the AST
+ */
+function findNodeDefinitions(ast: ASTNode): NodeDefinitionNode[] {
+  return findNodesOfType(ast, ASTNodeType.NODE_DEFINITION) as NodeDefinitionNode[];
 }
 
-// Process parameters from AST to node parameters
-function processParameters(astParams: Record<string, ASTNode>, nodeDef: NodeDefinition) {
-  const result: Record<string, any> = {};
-  
-  // Start with default values from node definition
-  nodeDef.parameters.forEach(param => {
-    result[param.id] = param.defaultValue;
-  });
-  
-  // Override with values from AST
-  Object.entries(astParams).forEach(([key, value]) => {
-    const param = nodeDef.parameters.find(p => p.id === key);
-    
-    if (param) {
-      // Convert value based on parameter type
-      switch (param.type) {
-        case ParameterType.NUMBER:
-        case ParameterType.SLIDER:
-          result[key] = typeof value === 'number' ? value : parseFloat(String(value));
-          break;
-        case ParameterType.TEXT:
-          result[key] = String(value);
-          break;
-        case ParameterType.DROPDOWN:
-          result[key] = String(value);
-          break;
-      }
+/**
+ * Find the workspace block in the AST
+ */
+function findWorkspaceBlock(ast: ASTNode): ASTNode | undefined {
+  return findNodesOfType(ast, ASTNodeType.WORKSPACE_BLOCK)[0];
+}
+
+/**
+ * Find the connections block in the AST
+ */
+function findConnectionsBlock(ast: ASTNode): ASTNode | undefined {
+  return findNodesOfType(ast, ASTNodeType.CONNECTIONS_BLOCK)[0];
+}
+
+/**
+ * Process node definitions and register them with the node registry
+ */
+function processNodeDefinitions(nodeDefinitions: NodeDefinitionNode[]) {
+  nodeDefinitions.forEach(nodeDef => {
+    try {
+      // Validate the node definition
+      validateNodeDefinition(nodeDef);
+
+      // Generate the node definition and register it
+      const definition = generateNodeDefinition(nodeDef);
+      nodeRegistry.registerDynamicNode(definition);
+    } catch (error) {
+      console.error(`Error processing node definition ${nodeDef.name}:`, error);
+      throw error;
     }
   });
-  
-  return result;
+}
+
+interface ParseResult {
+  nodes: Array<{
+    id: string;
+    type: string;
+    data: any;
+    position: { x: number; y: number };
+  }>;
+  edges: Array<{
+    id: string;
+    source: string;
+    sourceHandle: string;
+    target: string;
+    targetHandle: string;
+  }>;
+  errors?: Array<{
+    message: string;
+    line?: number;
+    column?: number;
+  }>;
+}
+
+/**
+ * Main entry point for parsing DSL code
+ */
+export function parseCode(code: string): ParseResult {
+  try {
+    // Clear any previously registered dynamic nodes
+    nodeRegistry.clearDynamicNodes();
+
+    // First pass: Tokenize and parse the code into an AST
+    const tokens = tokenize(code);
+    const ast = parse(tokens);
+
+    // Second pass: Find and process node definitions
+    const nodeDefinitions = findNodeDefinitions(ast);
+    processNodeDefinitions(nodeDefinitions);
+
+    // Third pass: Process workspace and connections
+    const workspaceBlock = findWorkspaceBlock(ast);
+    const connectionsBlock = findConnectionsBlock(ast);
+
+    if (!workspaceBlock) {
+      return { nodes: [], edges: [], errors: [{ message: 'No workspace block found' }] };
+    }
+
+    // Process the workspace and connections together
+    const { nodes, edges } = processWorkspace(workspaceBlock, connectionsBlock);
+
+    return { nodes, edges };
+  } catch (error) {
+    console.error('Error parsing code:', error);
+    
+    // Return a structured error object
+    return {
+      nodes: [],
+      edges: [],
+      errors: [{
+        message: error instanceof Error ? error.message : 'Unknown error during parsing',
+        line: (error as any)?.line,
+        column: (error as any)?.column
+      }]
+    };
+  }
+}
+
+/**
+ * Parse a single node definition string
+ * Useful for testing or when receiving individual node definitions
+ */
+export function parseNodeDefinition(code: string): NodeDefinitionNode {
+  const tokens = tokenize(code);
+  const ast = parse(tokens);
+
+  const nodeDefinitions = findNodeDefinitions(ast);
+  if (nodeDefinitions.length !== 1) {
+    throw new Error('Expected exactly one node definition');
+  }
+
+  return nodeDefinitions[0];
 }

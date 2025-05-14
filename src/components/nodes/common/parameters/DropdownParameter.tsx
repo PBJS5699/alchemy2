@@ -14,6 +14,18 @@ const DropdownParameter: React.FC<DropdownParameterProps> = ({ nodeId, param, va
   const dropdownRef = useRef<HTMLDivElement>(null);
   const updateNodeParameters = useFlowStore(state => state.updateNodeParameters);
 
+  // Use consistent parameter name property (matching the NodeDefinition interface)
+  const paramName = param.name || param.id;
+  const displayName = param.displayName || param.label || paramName;
+  
+  // Ensure we have options and a valid current value
+  const options = param.options || [];
+  const currentValue = value !== undefined && value !== null
+    ? value
+    : param.defaultValue !== undefined 
+      ? param.defaultValue 
+      : options.length > 0 ? options[0] : '';
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -32,7 +44,7 @@ const DropdownParameter: React.FC<DropdownParameterProps> = ({ nodeId, param, va
   }, [isOpen]);
 
   const handleSelect = (option: string) => {
-    updateNodeParameters(nodeId, { [param.id]: option });
+    updateNodeParameters(nodeId, { [paramName]: option });
     setIsOpen(false);
   };
 
@@ -45,15 +57,15 @@ const DropdownParameter: React.FC<DropdownParameterProps> = ({ nodeId, param, va
           setIsOpen(!isOpen);
         }}
       >
-        <span className="parameter-label">{param.label}</span>
-        <span className="parameter-value">{value}</span>
+        <span className="parameter-label">{displayName}</span>
+        <span className="parameter-value">{currentValue}</span>
       </div>
       {isOpen && (
         <div className="dropdown-menu">
-          {param.options?.map((option) => (
+          {options.map((option) => (
             <div
               key={option}
-              className={`dropdown-option ${option === value ? 'selected' : ''}`}
+              className={`dropdown-option ${option === currentValue ? 'selected' : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
                 handleSelect(option);
